@@ -94,9 +94,7 @@ function App() {
   };
 
   const handleAmountChange = (value) => {
-    // Ensure value contains only digits and at most one decimal point
     if (/^\d*\.?\d*$/.test(value)) {
-      // Check if the value contains more than one decimal point
       if ((value.match(/\./g) || []).length <= 1) {
         setAmount(value);
       }
