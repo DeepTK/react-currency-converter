@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 import {
-  Button,
   Card,
   CardBody,
   CardFooter,
@@ -14,110 +13,42 @@ import {
   Row,
 } from "reactstrap";
 import switch_img from "./switch.png";
+
 function App() {
   const [amount, setAmount] = useState(1);
-  const [fromCurrencyData, setFromCurrencyData] = useState([]);
-  const [toCurrencyData, setToCurrencyData] = useState([]);
+  const [currencies, setCurrencies] = useState([]);
   const [fromCurrency, setFromCurrency] = useState("USD");
   const [toCurrency, setToCurrency] = useState("INR");
   const [convertedAmount, setConvertedAmount] = useState(0);
 
-  const fetchRates = async () => {
-    fetch(
-      "https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/latest/currencies.json"
-    )
-      .then((response) => {
-        if (!response.ok) {
-          console.log("Network response was not ok");
-        }
-        return response.json();
-      })
-      .then((data) => {
-        // console.log(data);
-        setFromCurrencyData(
-          Object.entries(data).map(
-            ([key, value]) =>
-              value !== "" && (
-                <option
-                  key={key}
-                  value={key.toUpperCase()}
-                  selected={fromCurrency == key.toUpperCase()}
-                >
-                  {value + " ( " + key.toUpperCase() + " )"}
-                </option>
-              )
-          )
-        );
-        setToCurrencyData(
-          Object.entries(data).map(
-            ([key, value]) =>
-              value !== "" && (
-                <option
-                  key={key}
-                  value={key.toUpperCase()}
-                  selected={toCurrency == key.toUpperCase()}
-                >
-                  {value + " ( " + key.toUpperCase() + " )"}
-                </option>
-              )
-          )
-        );
-      })
-      .catch((error) => {
-        console.error("There was a problem with the fetch operation:", error);
-      });
-  };
-
-  const handleConvert = async () => {
-    const url = `https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/latest/currencies/${fromCurrency.toLowerCase()}.json`;
-    console.log(url);
-    fetch(url)
-      .then((response) => {
-        if (!response.ok) {
-          console.log("Network response was not ok");
-        }
-        return response.json();
-      })
-      .then((data) => {
-        console.log(data[fromCurrency.toLowerCase()]);
-        const conversionRate = data[fromCurrency.toLowerCase()][toCurrency.toLowerCase()];
-        if (fromCurrency.length === 1 || fromCurrency.charAt(0) === "0") {
-          setConvertedAmount(conversionRate);
-        } else {
-          const converted = amount * conversionRate;
-          setConvertedAmount(converted.toFixed(2));
-        }
-      })
-      .catch((error) => {
-        console.error("There was a problem with the fetch operation:", error);
-      });
-  };
-
-  const handleAmountChange = (value) => {
-    if (/^\d*\.?\d*$/.test(value)) {
-      if ((value.match(/\./g) || []).length <= 1) {
-        setAmount(value);
-      }
-    }
-  };
-
-  const switchHandler = () => {
-    let from = fromCurrency;
-    let to = toCurrency;
-    // console.log(from, to);
-    setFromCurrency(to);
-    setToCurrency(from);
-  };
-
   useEffect(() => {
-    fetchRates();
+    fetch("https://api.exchangerate-api.com/v4/latest/USD")
+      .then((response) => response.json())
+      .then((data) => {
+        setCurrencies(Object.keys(data.rates));
+      })
+      .catch((error) => console.error("Error fetching currency data:", error));
   }, []);
 
   useEffect(() => {
-    fetchRates();
-  }, [fromCurrency, toCurrency]);
+    if (amount && fromCurrency && toCurrency) {
+      fetch(`https://api.exchangerate-api.com/v4/latest/${fromCurrency}`)
+        .then((response) => response.json())
+        .then((data) => {
+          const conversionRate = data.rates[toCurrency];
+          setConvertedAmount((amount * conversionRate).toFixed(2));
+        })
+        .catch((error) =>
+          console.error("Error fetching exchange rate:", error)
+        );
+    }
+  }, [amount, fromCurrency, toCurrency]);
 
-  console.log(convertedAmount)
+  const switchHandler = () => {
+    setFromCurrency(toCurrency);
+    setToCurrency(fromCurrency);
+  };
+
   return (
     <div className="App container my-5">
       <Card style={{ background: "#F8F9F9" }}>
@@ -129,60 +60,67 @@ function App() {
           >
             <b>Currency Converter</b>
           </CardTitle>
-          <CardText>
+          <div>
             <Row>
-              <Col md="4" sm="4" xl="5" xxl="5">
+              <Col md="4">
                 <FormGroup>
                   <Label for="amount">Amount</Label>
                   <Input
                     id="amount"
                     name="amount"
                     value={amount}
-                    placeholder="with a placeholder"
-                    type="text"
-                    onChange={(e) => handleAmountChange(e.target.value)}
+                    type="number"
+                    onChange={(e) => setAmount(e.target.value)}
                   />
                 </FormGroup>
               </Col>
-              <Col md="3" sm="4" xl="3" xxl="3">
+              <Col md="3">
                 <FormGroup>
                   <Label for="from">From</Label>
                   <Input
                     type="select"
-                    defaultValue={fromCurrency}
+                    value={fromCurrency}
                     onChange={(e) => setFromCurrency(e.target.value)}
                   >
-                    {fromCurrencyData}
+                    {currencies.map((currency) => (
+                      <option key={currency} value={currency}>
+                        {currency}
+                      </option>
+                    ))}
                   </Input>
                 </FormGroup>
               </Col>
-              <Col md="2" sm="4" xl="1" xxl="1" className="text-center">
+              <Col md="2" className="text-center">
                 <img
                   src={switch_img}
                   onClick={switchHandler}
-                  style={{ maxWidth: "100px" }}
+                  style={{ maxWidth: "50px", cursor: "pointer" }}
+                  alt="Switch"
                 />
               </Col>
-              <Col md="3" sm="4" xl="3" xxl="3">
+              <Col md="3">
                 <FormGroup>
-                  <Label for="from">From</Label>
+                  <Label for="to">To</Label>
                   <Input
                     type="select"
-                    defaultValue={fromCurrency}
-                    onChange={(e) => setFromCurrency(e.target.value)}
+                    value={toCurrency}
+                    onChange={(e) => setToCurrency(e.target.value)}
                   >
-                    {toCurrencyData}
+                    {currencies.map((currency) => (
+                      <option key={currency} value={currency}>
+                        {currency}
+                      </option>
+                    ))}
                   </Input>
                 </FormGroup>
               </Col>
             </Row>
-            <Button color="success" onClick={handleConvert}>
-              Convert
-            </Button>
-          </CardText>
+          </div>
           <CardFooter>
             <h5>Converted Amount</h5>
-            <p>{convertedAmount}</p>
+            <p>
+              {convertedAmount} {toCurrency}
+            </p>
           </CardFooter>
         </CardBody>
       </Card>
